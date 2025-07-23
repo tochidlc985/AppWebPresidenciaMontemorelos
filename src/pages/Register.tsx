@@ -1,6 +1,7 @@
+// src/components/Register.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../index.css';
+import '../index.css'; // Make sure this path is correct relative to Register.tsx
 import toast from 'react-hot-toast';
 
 const Register: React.FC = () => {

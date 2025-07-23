@@ -11,7 +11,7 @@ export default defineConfig({
     port: 5173, // Puedes especificar el puerto
     proxy: {
       '/api': {
-        target: 'https://appwebpresidenciamontemo-506fa.web.app/',
+        target: 'http://localhost:4000',
         changeOrigin: true,
       },
     },

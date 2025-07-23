@@ -1,6 +1,7 @@
+// src/components/Login.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../index.css';
+import '../index.css'; // Make sure this path is correct relative to Login.tsx
 import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {

@@ -4,45 +4,46 @@ import bodyParser from 'body-parser';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { db } from './dist/utils/database.js';
+import { fileURLToPath } from 'url';
+import { db } from './src/utils/database.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Corrección para usar __dirname con módulos ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Middleware globales
 app.use(cors());
 app.use(bodyParser.json({ limit: '20mb' }));
 
-// Configuración de multer para subir imágenes a /uploads
-const uploadDir = path.resolve('./uploads');
+// Configuración de multer
+const uploadDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
+
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+  },
 });
 const upload = multer({ storage });
 
-// Nuevo endpoint para guardar un reporte con imágenes
+/* ========================
+   API: Reportes
+======================== */
+
+// Crear un nuevo reporte con imágenes
 app.post('/api/reportes', upload.array('imagenes', 10), async (req, res) => {
   try {
-    // Los datos del reporte vienen en req.body (campos de texto)
-    // Las imágenes subidas están en req.files
     const files = req.files || [];
-    // Si el frontend envía un campo 'data' con el JSON del reporte, parsearlo
-    let reporte;
-    if (req.body.data) {
-      reporte = JSON.parse(req.body.data);
-    } else {
-      reporte = req.body;
-    }
-    // Guardar los nombres de los archivos subidos
+    const reporte = req.body.data ? JSON.parse(req.body.data) : req.body;
     reporte.imagenes = files.map(f => f.filename);
+
     const ok = await db.guardarReporte(reporte);
     if (ok) {
       res.status(201).json({ message: 'Reporte guardado correctamente' });
@@ -54,7 +55,7 @@ app.post('/api/reportes', upload.array('imagenes', 10), async (req, res) => {
   }
 });
 
-// Endpoint para obtener todos los reportes desde MongoDB
+// Obtener todos los reportes
 app.get('/api/reportes', async (req, res) => {
   try {
     const reportes = await db.obtenerReportes();
@@ -64,12 +65,13 @@ app.get('/api/reportes', async (req, res) => {
   }
 });
 
-// Endpoint para actualizar prioridad y/o estado de un reporte
+// Actualizar estado o prioridad del reporte
 app.patch('/api/reportes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const update = req.body; // { prioridad, status }
+    const update = req.body;
     const ok = await db.actualizarReporte(id, update);
+
     if (ok) {
       res.json({ message: 'Reporte actualizado correctamente' });
     } else {
@@ -80,12 +82,12 @@ app.patch('/api/reportes/:id', async (req, res) => {
   }
 });
 
-// Endpoint para eliminar un reporte
+// Eliminar reporte
 app.delete('/api/reportes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Usar el método del módulo db para eliminar (debe aceptar id personalizado o _id)
     const ok = await db.eliminarReporte(id);
+
     if (ok) {
       res.json({ message: 'Reporte eliminado correctamente' });
     } else {
@@ -96,13 +98,18 @@ app.delete('/api/reportes/:id', async (req, res) => {
   }
 });
 
-// Endpoint para registrar un usuario
+/* ========================
+   API: Usuarios
+======================== */
+
+// Registrar usuario
 app.post('/api/register', async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
     if (!nombre || !email || !password || !rol) {
       return res.status(400).json({ message: 'Faltan campos requeridos' });
     }
+
     const usuario = await db.registrarUsuario({ nombre, email, password, rol });
     res.status(201).json({ message: 'Usuario registrado correctamente', usuario });
   } catch (error) {
@@ -114,13 +121,14 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Endpoint para login de usuario
+// Login usuario
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: 'Faltan campos requeridos' });
     }
+
     const usuario = await db.autenticarUsuario({ email, password });
     res.status(200).json({ message: 'Login exitoso', usuario });
   } catch (error) {
@@ -132,6 +140,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
